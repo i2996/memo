@@ -1,6 +1,6 @@
 /* 앱 파일을 폰에 저장해 두고, 오프라인에서도 열리게 해요.
    파일을 고쳐서 다시 올릴 땐 아래 버전 숫자를 올리면 새 파일이 확실히 적용돼요. */
-var CACHE = 'memo-v1';
+var CACHE = 'memo-v2';
 var ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'icon-180.png'];
 
 self.addEventListener('install', function(e){

@@ -104,6 +104,12 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
 .chip.prep{--c:var(--prep);--t:var(--prep-t);}
 .chip.misc{--c:var(--misc);--t:var(--misc-t);}
 .chip.del{--c:var(--muted);background:transparent;margin-left:auto;}
+.chip.plain{--c:var(--ink);background:transparent;}
+.editrow{grid-column:1 / -1;display:flex;gap:6px;align-items:center;}
+.edit{flex:1;min-width:0;height:44px;padding:0 12px;font-size:1rem;background:var(--surface);border:2px solid var(--line);border-radius:10px;}
+.edit:focus{border-color:var(--focus);outline:none;}
+.btn-save{height:44px;padding:0 16px;border:0;border-radius:10px;font-weight:700;background:var(--ink);color:var(--bg);}
+.editrow .ghost{min-height:44px;border-radius:10px;}
 
 @media (prefers-reduced-motion: reduce){.item.flash{animation:none;}}
 @media (max-width:420px){.app{padding:16px 12px 32px;}h1{font-size:1.4rem;}.composer button{padding:0 16px;}}
@@ -118,7 +124,7 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
 
   <div class="composer">
     <label class="sr" for="memo">새 메모</label>
-    <input id="memo" type="text" autocomplete="off" enterkeyhint="done" maxlength="200" placeholder="적으면 알아서 나눠줘요. 예: 계란 두 판">
+    <input id="memo" type="text" autocomplete="off" enterkeyhint="done" maxlength="200" placeholder="적으면 알아서 나눠줘요 (예: 다이소 수납함)">
     <button id="add" type="button">저장</button>
   </div>
   <p id="status" class="status" role="status" aria-live="polite"></p>
@@ -153,6 +159,8 @@ var RULES = [
 var state = {memos:[], fixes:[], words:{}};
 /* fixes: 직접 옮긴 메모(같은 메모는 그대로), words: 옮길 때 배운 단어(규칙에 없는 메모에만 적용) */
 var expandedId = null;
+var editingId = null;
+var pendingFocus = null;
 var justAdded = null;
 
 function load(){
@@ -190,6 +198,23 @@ function say(msg){
 }
 function short(t){ return t.length > 18 ? t.slice(0,18) + '…' : t; }
 
+/* 칸 이름을 따로 떨어뜨려 쓰면 그 칸으로 가고, 그 글자는 지워져요 (예: "여권 준비" → 준비칸에 "여권") */
+var LABELS = [
+  ['daiso', '다이소(?:에서|에|용)?'],
+  ['prep',  '준비'],
+  ['groc',  '장보기'],
+  ['buy',   '살\\s?것']
+];
+function extractLabel(raw){
+  for(var i=0;i<LABELS.length;i++){
+    var re = new RegExp('(^|\\s)#?' + LABELS[i][1] + '[:：,]?(?=\\s|$)');
+    if(re.test(raw)){
+      var t = raw.replace(re, ' ').replace(/\s+/g, ' ').trim();
+      if(t) return {text:t, cat:LABELS[i][0]};   // 글자가 하나도 안 남으면 그대로 둬요
+    }
+  }
+  return {text:raw, cat:null};
+}
 /* ---------- 분류 ---------- */
 var SKIP = /^(하나|오늘|내일|모레|이번|다음|나중|그냥|메모|필요|꼭)$/;
 function tokens(text){
@@ -220,10 +245,12 @@ function learn(text, cat){
 
 /* ---------- 동작 ---------- */
 function addMemo(){
-  var text = els.input.value.trim();
-  if(!text) return;
+  var raw = els.input.value.trim();
+  if(!raw) return;
   els.input.value = '';
-  var r = classify(text);
+  var lab = extractLabel(raw);
+  var text = lab.text;
+  var r = lab.cat ? {cat:lab.cat, why:'label'} : classify(text);
   var memo = {id:uid(), text:text, cat:r.cat, done:false, ts:Date.now()};
   state.memos.unshift(memo);
   justAdded = memo.id;
@@ -246,7 +273,30 @@ function moveMemo(id, cat){
   if(state.fixes.length > 100) state.fixes = state.fixes.slice(-100);
   learn(m.text, cat);
   save(); render();
-  say('"' + short(m.text) + '" → ' + catOf(cat).name + '으로 옮겼어요. 비슷한 메모도 기억할게요.');
+  say('"' + short(m.text) + '" → ' + catOf(cat).name + ' 칸으로 옮겼어요. 비슷한 메모도 기억할게요.');
+}
+
+function startEdit(id){
+  editingId = id;
+  expandedId = null;
+  render();
+}
+function cancelEdit(){
+  editingId = null;
+  render();
+}
+function saveEdit(id, value){
+  var m = state.memos.find(function(x){ return x.id === id; });
+  if(!m){ editingId = null; render(); return; }
+  var raw = value.trim();
+  if(!raw){ say('빈 메모는 저장할 수 없어요. 지우려면 취소한 뒤 삭제를 눌러 주세요.'); return; }
+  var lab = extractLabel(raw);
+  var moved = lab.cat && lab.cat !== m.cat;
+  m.text = lab.text;
+  if(moved) m.cat = lab.cat;
+  editingId = null;
+  save(); render();
+  say(moved ? '수정하고 ' + catOf(m.cat).name + ' 칸으로 옮겼어요' : '수정했어요');
 }
 
 function toggleDone(id){
@@ -277,7 +327,34 @@ function el(tag, cls, text){
   return n;
 }
 
+function buildEditItem(m){
+  var li = el('li', 'item editing');
+  var row = el('div', 'editrow');
+  var inp = el('input', 'edit');
+  inp.type = 'text';
+  inp.value = m.text;
+  inp.maxLength = 200;
+  inp.autocomplete = 'off';
+  inp.setAttribute('aria-label', '메모 수정');
+  inp.setAttribute('enterkeyhint', 'done');
+  inp.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){ e.preventDefault(); saveEdit(m.id, inp.value); }
+    else if(e.key === 'Escape'){ cancelEdit(); }
+  });
+  var ok = el('button', 'btn-save', '저장');
+  ok.type = 'button';
+  ok.addEventListener('click', function(){ saveEdit(m.id, inp.value); });
+  var no = el('button', 'ghost', '취소');
+  no.type = 'button';
+  no.addEventListener('click', cancelEdit);
+  row.appendChild(inp); row.appendChild(ok); row.appendChild(no);
+  li.appendChild(row);
+  pendingFocus = inp;
+  return li;
+}
+
 function buildItem(m){
+  if(editingId === m.id) return buildEditItem(m);
   var li = el('li', 'item' + (m.done ? ' done' : '') + (m.id === justAdded ? ' flash' : ''));
 
   var chk = el('button', 'check', '✓');
@@ -289,10 +366,10 @@ function buildItem(m){
 
   var txt = el('span', 'txt', m.text);
 
-  var more = el('button', 'more', expandedId === m.id ? '닫기' : '이동');
+  var more = el('button', 'more', expandedId === m.id ? '닫기' : '편집');
   more.type = 'button';
   more.setAttribute('aria-expanded', expandedId === m.id ? 'true' : 'false');
-  more.setAttribute('aria-label', m.text + ' 다른 칸으로 이동하거나 삭제');
+  more.setAttribute('aria-label', m.text + ' 수정, 다른 칸으로 이동, 삭제');
   more.addEventListener('click', function(){
     expandedId = (expandedId === m.id) ? null : m.id;
     render();
@@ -302,6 +379,10 @@ function buildItem(m){
 
   if(expandedId === m.id){
     var acts = el('div', 'acts');
+    var ed = el('button', 'chip plain', '글자 수정');
+    ed.type = 'button';
+    ed.addEventListener('click', function(){ startEdit(m.id); });
+    acts.appendChild(ed);
     CATS.forEach(function(c){
       if(c.id === m.cat) return;
       var b = el('button', 'chip ' + c.id, c.name);
@@ -352,6 +433,11 @@ function render(){
   els.clear.textContent = '완료한 항목 지우기 (' + doneCount + ')';
 
   justAdded = null;
+  if(pendingFocus){
+    var f = pendingFocus; pendingFocus = null;
+    f.focus();
+    try{ f.setSelectionRange(f.value.length, f.value.length); }catch(e){}
+  }
 }
 
 /* ---------- 시작 ---------- */
