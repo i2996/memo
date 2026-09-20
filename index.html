@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161D" media="(prefers-color-scheme: dark)">
+<title>메모 정리</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --ink:#1C2430; --muted:#5B6778; --line:#D3DAE4; --focus:#2A52C4;
+  --groc:#1B6F4C; --groc-t:#DCF0E5;
+  --buy:#2A52C4;  --buy-t:#E0E8FF;
+  --daiso:#B92A45; --daiso-t:#FDE1E6;
+  --prep:#8A5F00; --prep-t:#FFEFC2;
+  --misc:#57499A; --misc-t:#E8E4F5;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12161D; --surface:#1B212B; --ink:#E8ECF2; --muted:#98A4B5; --line:#2C3542; --focus:#86A6FF;
+    --groc:#62D3A0; --groc-t:#16352A;
+    --buy:#8BA9FF;  --buy-t:#1B2A55;
+    --daiso:#FF93A6; --daiso-t:#48202A;
+    --prep:#F2C45E; --prep-t:#453612;
+    --misc:#BBAEF2; --misc-t:#2D2850;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12161D; --surface:#1B212B; --ink:#E8ECF2; --muted:#98A4B5; --line:#2C3542; --focus:#86A6FF;
+  --groc:#62D3A0; --groc-t:#16352A;
+  --buy:#8BA9FF;  --buy-t:#1B2A55;
+  --daiso:#FF93A6; --daiso-t:#48202A;
+  --prep:#F2C45E; --prep-t:#453612;
+  --misc:#BBAEF2; --misc-t:#2D2850;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',system-ui,sans-serif;
+  font-size:16px; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere;
+}
+button,input{font:inherit;color:inherit;}
+button{cursor:pointer;}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+.app{max-width:1100px;margin:0 auto;padding:20px 16px 40px;}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
+.ghost{background:none;border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;color:var(--muted);font-size:.9rem;}
+.ghost:hover{border-color:var(--muted);color:var(--ink);}
+
+.composer{display:flex;gap:8px;}
+.composer input{
+  flex:1;min-width:0;height:54px;padding:0 16px;font-size:1.05rem;
+  background:var(--surface);border:2px solid var(--line);border-radius:14px;
+}
+.composer input::placeholder{color:var(--muted);}
+.composer input:focus{border-color:var(--focus);outline:none;}
+.composer button{
+  height:54px;padding:0 22px;border:0;border-radius:14px;font-weight:700;font-size:1rem;
+  background:var(--ink);color:var(--bg);
+}
+.status{min-height:1.6em;margin:8px 2px 0;font-size:.95rem;color:var(--muted);}
+.note{margin:4px 2px 0;font-size:.85rem;color:var(--muted);}
+
+.board{margin-top:18px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));align-items:start;}
+.col{--c:var(--misc);--t:var(--misc-t);background:var(--t);border-radius:18px;padding:14px 12px 12px;}
+.groc{--c:var(--groc);--t:var(--groc-t);}
+.buy{--c:var(--buy);--t:var(--buy-t);}
+.daiso{--c:var(--daiso);--t:var(--daiso-t);}
+.prep{--c:var(--prep);--t:var(--prep-t);}
+.misc{--c:var(--misc);--t:var(--misc-t);}
+.col header{padding:0 4px 10px;}
+.col h2{margin:0;display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;color:var(--c);}
+.count{min-width:1.6em;padding:0 8px;border-radius:999px;background:var(--c);color:var(--surface);font-size:.8rem;font-weight:700;text-align:center;line-height:1.6;}
+.col p.desc{margin:2px 0 0;font-size:.85rem;color:var(--muted);}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.none{display:none;margin:0;padding:10px 4px;font-size:.9rem;color:var(--muted);}
+@media (min-width:700px){.none{display:block;}}
+
+.item{background:var(--surface);border-radius:9px;padding:10px 10px 10px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;}
+.item.flash{animation:flash 1.4s ease-out;}
+@keyframes flash{from{box-shadow:0 0 0 3px var(--c);}to{box-shadow:0 0 0 0 transparent;}}
+.check{width:26px;height:26px;margin-top:1px;border-radius:50%;border:2px solid var(--c);background:transparent;padding:0;display:grid;place-items:center;color:transparent;font-size:.85rem;line-height:1;}
+.check[aria-checked="true"]{background:var(--c);color:var(--surface);}
+.txt{padding-top:2px;}
+.item.done .txt{text-decoration:line-through;color:var(--muted);}
+.more{background:none;border:0;color:var(--muted);font-size:.85rem;padding:6px 8px;border-radius:8px;min-height:36px;}
+.more:hover{color:var(--ink);background:var(--bg);}
+.acts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px;}
+.chip{--c:var(--misc);--t:var(--misc-t);background:var(--t);color:var(--c);border:1.5px solid var(--c);border-radius:999px;padding:6px 12px;font-size:.88rem;font-weight:500;}
+.chip.groc{--c:var(--groc);--t:var(--groc-t);}
+.chip.buy{--c:var(--buy);--t:var(--buy-t);}
+.chip.daiso{--c:var(--daiso);--t:var(--daiso-t);}
+.chip.prep{--c:var(--prep);--t:var(--prep-t);}
+.chip.misc{--c:var(--misc);--t:var(--misc-t);}
+.chip.del{--c:var(--muted);background:transparent;margin-left:auto;}
+
+@media (prefers-reduced-motion: reduce){.item.flash{animation:none;}}
+@media (max-width:420px){.app{padding:16px 12px 32px;}h1{font-size:1.4rem;}.composer button{padding:0 16px;}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>메모 정리</h1>
+    <button id="clearDone" class="ghost" type="button" hidden>완료한 항목 지우기</button>
+  </header>
+
+  <div class="composer">
+    <label class="sr" for="memo">새 메모</label>
+    <input id="memo" type="text" autocomplete="off" enterkeyhint="done" maxlength="200" placeholder="적으면 알아서 나눠줘요. 예: 계란 두 판">
+    <button id="add" type="button">저장</button>
+  </div>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <main id="board" class="board"></main>
+  <p id="storeNote" class="note" hidden>이 브라우저에는 저장할 수 없어서, 앱을 닫으면 메모가 사라져요.</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var KEY = 'memo-sorter-v1';
+var CATS = [
+  {id:'groc',  name:'장보기',      desc:'마트에서 살 식료품과 생필품'},
+  {id:'buy',   name:'살 것',       desc:'따로 사려는 물건'},
+  {id:'daiso', name:'다이소',      desc:'다이소에서 살 것'},
+  {id:'prep',  name:'준비',        desc:'챙기거나 미리 해둘 일'},
+  {id:'misc',  name:'잡다한 메모', desc:'나머지 전부'}
+];
+function catOf(id){ return CATS.find(function(c){return c.id===id;}) || CATS[4]; }
+
+/* 단어 규칙: 위에서부터 먼저 맞는 칸으로 들어가요 */
+var FOOD = /우유|계란|달걀|두부|대파|양파|마늘|고기|삼겹|소고기|돼지|닭|생선|오징어|새우|라면|쌀|과일|사과|바나나|딸기|귤|포도|수박|김치|생수|콩나물|시금치|상추|식빵|빵|요거트|요구르트|치즈|커피|두유|반찬|마트|장보|채소|야채|감자|고구마|당근|버섯|오이|토마토|간장|참기름|소금|설탕|밀가루|햄|소시지|만두|과자|음료|맥주|주스|물티슈|세제|휴지/;
+var RULES = [
+  ['daiso', /다이소|daiso|수납|정리함|후크|고리|집게|수세미|고무장갑|행주|밀폐용기|옷걸이|포스트잇|파우치/i],
+  ['prep',  /준비|챙기|챙겨|예약|신청|제출|서류|가져가|가져오|발표|시험|면접|출장|여행|접수|갱신|납부|송금/],
+  ['groc',  FOOD],
+  ['buy',   /사야|사자|살\s?것|사기|구매|주문|구입|장만|교체|새로\s?사/]
+];
+
+var state = {memos:[], fixes:[], words:{}};
+/* fixes: 직접 옮긴 메모(같은 메모는 그대로), words: 옮길 때 배운 단어(규칙에 없는 메모에만 적용) */
+var expandedId = null;
+var justAdded = null;
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){
+      var p = JSON.parse(raw);
+      if(p && Array.isArray(p.memos)){
+        state.memos = p.memos.filter(function(m){return m && typeof m.id==='string' && typeof m.text==='string' && m.cat;});
+        state.fixes = Array.isArray(p.fixes) ? p.fixes.filter(function(f){return f && typeof f.text==='string';}) : [];
+        state.words = (p.words && typeof p.words==='object') ? p.words : {};
+      }
+    }
+  }catch(e){ /* 저장소가 비었거나 못 읽어도 빈 화면으로 시작 */ }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ document.getElementById('storeNote').hidden = false; }
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+var els = {
+  input: document.getElementById('memo'),
+  add: document.getElementById('add'),
+  status: document.getElementById('status'),
+  board: document.getElementById('board'),
+  clear: document.getElementById('clearDone')
+};
+
+var sayTimer;
+function say(msg){
+  els.status.textContent = msg;
+  clearTimeout(sayTimer);
+  sayTimer = setTimeout(function(){ els.status.textContent = ''; }, 6000);
+}
+function short(t){ return t.length > 18 ? t.slice(0,18) + '…' : t; }
+
+/* ---------- 분류 ---------- */
+var SKIP = /^(하나|오늘|내일|모레|이번|다음|나중|그냥|메모|필요|꼭)$/;
+function tokens(text){
+  return text.split(/[\s,./·+&()~!?]+/).filter(function(t){
+    return t.length >= 2 && !/^\d/.test(t) && !SKIP.test(t);
+  });
+}
+function classify(text){
+  var fix = state.fixes.find(function(f){ return f.text === text; });
+  if(fix) return {cat:fix.cat, why:'fix'};
+  for(var i=0;i<RULES.length;i++){
+    if(RULES[i][1].test(text)) return {cat:RULES[i][0], why:'rule'};
+  }
+  var learned = Object.keys(state.words).filter(function(w){ return text.indexOf(w) !== -1; });
+  if(learned.length){
+    learned.sort(function(a,b){ return b.length - a.length; });
+    return {cat:state.words[learned[0]], why:'learned'};
+  }
+  return {cat:'misc', why:'none'};
+}
+function learn(text, cat){
+  tokens(text).forEach(function(t){ state.words[t] = cat; });
+  var keys = Object.keys(state.words);
+  if(keys.length > 200){
+    keys.slice(0, keys.length - 200).forEach(function(k){ delete state.words[k]; });
+  }
+}
+
+/* ---------- 동작 ---------- */
+function addMemo(){
+  var text = els.input.value.trim();
+  if(!text) return;
+  els.input.value = '';
+  var r = classify(text);
+  var memo = {id:uid(), text:text, cat:r.cat, done:false, ts:Date.now()};
+  state.memos.unshift(memo);
+  justAdded = memo.id;
+  save(); render();
+  els.input.focus();
+  if(r.why === 'none'){
+    say('맞는 단어가 없어서 잡다한 메모에 넣었어요. 이동 버튼으로 옮기면 다음부터 기억해요.');
+  }else{
+    say('"' + short(text) + '" → ' + catOf(r.cat).name + '에 넣었어요');
+  }
+}
+
+function moveMemo(id, cat){
+  var m = state.memos.find(function(x){ return x.id === id; });
+  expandedId = null;
+  if(!m || m.cat === cat){ render(); return; }
+  m.cat = cat;
+  state.fixes = state.fixes.filter(function(f){ return f.text !== m.text; });
+  state.fixes.push({text:m.text, cat:cat});
+  if(state.fixes.length > 100) state.fixes = state.fixes.slice(-100);
+  learn(m.text, cat);
+  save(); render();
+  say('"' + short(m.text) + '" → ' + catOf(cat).name + '으로 옮겼어요. 비슷한 메모도 기억할게요.');
+}
+
+function toggleDone(id){
+  var m = state.memos.find(function(x){ return x.id === id; });
+  if(!m) return;
+  m.done = !m.done;
+  save(); render();
+}
+
+function deleteMemo(id){
+  state.memos = state.memos.filter(function(x){ return x.id !== id; });
+  if(expandedId === id) expandedId = null;
+  save(); render();
+}
+
+function clearDone(){
+  state.memos = state.memos.filter(function(x){ return !x.done; });
+  expandedId = null;
+  save(); render();
+  say('완료한 항목을 지웠어요');
+}
+
+/* ---------- 화면 ---------- */
+function el(tag, cls, text){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text != null) n.textContent = text;
+  return n;
+}
+
+function buildItem(m){
+  var li = el('li', 'item' + (m.done ? ' done' : '') + (m.id === justAdded ? ' flash' : ''));
+
+  var chk = el('button', 'check', '✓');
+  chk.type = 'button';
+  chk.setAttribute('role', 'checkbox');
+  chk.setAttribute('aria-checked', m.done ? 'true' : 'false');
+  chk.setAttribute('aria-label', m.text + ' 완료 표시');
+  chk.addEventListener('click', function(){ toggleDone(m.id); });
+
+  var txt = el('span', 'txt', m.text);
+
+  var more = el('button', 'more', expandedId === m.id ? '닫기' : '이동');
+  more.type = 'button';
+  more.setAttribute('aria-expanded', expandedId === m.id ? 'true' : 'false');
+  more.setAttribute('aria-label', m.text + ' 다른 칸으로 이동하거나 삭제');
+  more.addEventListener('click', function(){
+    expandedId = (expandedId === m.id) ? null : m.id;
+    render();
+  });
+
+  li.appendChild(chk); li.appendChild(txt); li.appendChild(more);
+
+  if(expandedId === m.id){
+    var acts = el('div', 'acts');
+    CATS.forEach(function(c){
+      if(c.id === m.cat) return;
+      var b = el('button', 'chip ' + c.id, c.name);
+      b.type = 'button';
+      b.addEventListener('click', function(){ moveMemo(m.id, c.id); });
+      acts.appendChild(b);
+    });
+    var del = el('button', 'chip del', '삭제');
+    del.type = 'button';
+    del.addEventListener('click', function(){ deleteMemo(m.id); });
+    acts.appendChild(del);
+    li.appendChild(acts);
+  }
+  return li;
+}
+
+function render(){
+  els.board.innerHTML = '';
+  CATS.forEach(function(c){
+    var items = state.memos.filter(function(m){ return m.cat === c.id; });
+    items.sort(function(a,b){
+      if(a.done !== b.done) return a.done ? 1 : -1;
+      return b.ts - a.ts;
+    });
+    var openCount = items.filter(function(m){ return !m.done; }).length;
+
+    var sec = el('section', 'col ' + c.id);
+    sec.setAttribute('aria-label', c.name);
+    var head = el('header');
+    var h2 = el('h2', null, c.name);
+    h2.appendChild(el('span', 'count', String(openCount)));
+    head.appendChild(h2);
+    head.appendChild(el('p', 'desc', c.desc));
+    sec.appendChild(head);
+
+    if(items.length){
+      var ul = el('ul', 'list');
+      items.forEach(function(m){ ul.appendChild(buildItem(m)); });
+      sec.appendChild(ul);
+    }else{
+      sec.appendChild(el('p', 'none', '비어 있어요'));
+    }
+    els.board.appendChild(sec);
+  });
+
+  var doneCount = state.memos.filter(function(m){ return m.done; }).length;
+  els.clear.hidden = doneCount === 0;
+  els.clear.textContent = '완료한 항목 지우기 (' + doneCount + ')';
+
+  justAdded = null;
+}
+
+/* ---------- 시작 ---------- */
+els.add.addEventListener('click', addMemo);
+els.input.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.isComposing && e.keyCode !== 229){
+    e.preventDefault();
+    addMemo();
+  }
+});
+els.clear.addEventListener('click', clearDone);
+
+load();
+render();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){ /* 오프라인 캐시만 안 될 뿐, 앱은 그대로 동작 */ });
+  });
+}
+})();
+</script>
+</body>
+</html>
