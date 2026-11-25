@@ -81,7 +81,13 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
 .daiso{--c:var(--daiso);--t:var(--daiso-t);}
 .misc{--c:var(--misc);--t:var(--misc-t);}
 .col header{padding:0 4px 10px;}
-.col h2{margin:0;display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;color:var(--c);}
+.col h2{margin:0;font-size:1.1rem;font-weight:700;color:var(--c);}
+.fold{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;width:100%;min-height:36px;border-radius:8px;}
+.fold:focus-visible{outline:3px solid var(--focus);outline-offset:2px;}
+.arrow{display:inline-block;font-size:1.1rem;width:1em;text-align:center;transition:transform .15s ease;}
+.col.shut .arrow{transform:rotate(-90deg);}
+.col.shut header{padding-bottom:0;}
+@media (prefers-reduced-motion: reduce){.arrow{transition:none;}}
 .count{min-width:1.6em;padding:0 8px;border-radius:999px;background:var(--c);color:var(--surface);font-size:.8rem;font-weight:700;text-align:center;line-height:1.6;}
 .col p.desc{margin:2px 0 0;font-size:.85rem;color:var(--muted);}
 .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
@@ -161,6 +167,22 @@ var RULES = [
 var state = {memos:[], fixes:[], words:{}};
 /* fixes: 직접 옮긴 메모(같은 메모는 그대로), words: 옮길 때 배운 단어(규칙에 없는 메모에만 적용) */
 var expandedId = null;
+
+/* 접어 둔 칸은 이 기기에만 기억해요 */
+var FOLD_KEY = 'memo-sorter-folded';
+var collapsed = {};
+try{ collapsed = JSON.parse(localStorage.getItem(FOLD_KEY)) || {}; }catch(e){ collapsed = {}; }
+function toggleFold(id){
+  if(collapsed[id]) delete collapsed[id]; else collapsed[id] = true;
+  try{ localStorage.setItem(FOLD_KEY, JSON.stringify(collapsed)); }catch(e){}
+  if(collapsed[id]){
+    var m = state.memos.find(function(x){ return x.id === expandedId || x.id === editingId; });
+    if(m && m.cat === id){ expandedId = null; editingId = null; }
+  }
+  pendingFold = id;
+  render();
+}
+var pendingFold = null;
 var editingId = null;
 var pendingFocus = null;
 var justAdded = null;
@@ -415,14 +437,25 @@ function render(){
 
     var sec = el('section', 'col ' + c.id);
     sec.setAttribute('aria-label', c.name);
+    var shut = !!collapsed[c.id];
+    if(shut) sec.className += ' shut';
     var head = el('header');
-    var h2 = el('h2', null, c.name);
-    h2.appendChild(el('span', 'count', String(openCount)));
+    var h2 = el('h2');
+    var tog = el('button', 'fold');
+    tog.type = 'button';
+    tog.setAttribute('aria-expanded', shut ? 'false' : 'true');
+    tog.appendChild(el('span', 'arrow', '▾'));
+    tog.appendChild(el('span', 'name', c.name));
+    tog.appendChild(el('span', 'count', String(openCount)));
+    tog.addEventListener('click', function(){ toggleFold(c.id); });
+    h2.appendChild(tog);
     head.appendChild(h2);
-    head.appendChild(el('p', 'desc', c.desc));
+    if(!shut) head.appendChild(el('p', 'desc', c.desc));
     sec.appendChild(head);
 
-    if(items.length){
+    if(shut){
+      // 접힌 칸은 내용을 그리지 않아요
+    }else if(items.length){
       var ul = el('ul', 'list');
       items.forEach(function(m){ ul.appendChild(buildItem(m)); });
       sec.appendChild(ul);
@@ -437,6 +470,11 @@ function render(){
   els.clear.textContent = '완료한 항목 지우기 (' + doneCount + ')';
 
   justAdded = null;
+  if(pendingFold){
+    var fb = els.board.querySelector('.col.' + pendingFold + ' .fold');
+    pendingFold = null;
+    if(fb) fb.focus();
+  }
   if(pendingFocus){
     var f = pendingFocus; pendingFocus = null;
     f.focus();
