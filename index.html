@@ -22,10 +22,8 @@
   }
 :root{
   --bg:#EEF1F5; --surface:#FFFFFF; --ink:#1C2430; --muted:#5B6778; --line:#D3DAE4; --focus:#2A52C4;
-  --groc:#1B6F4C; --groc-t:#DCF0E5;
   --buy:#2A52C4;  --buy-t:#E0E8FF;
   --daiso:#B92A45; --daiso-t:#FDE1E6;
-  --prep:#8A5F00; --prep-t:#FFEFC2;
   --misc:#57499A; --misc-t:#E8E4F5;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -34,19 +32,15 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#12161D; --surface:#1B212B; --ink:#E8ECF2; --muted:#98A4B5; --line:#2C3542; --focus:#86A6FF;
-    --groc:#62D3A0; --groc-t:#16352A;
     --buy:#8BA9FF;  --buy-t:#1B2A55;
     --daiso:#FF93A6; --daiso-t:#48202A;
-    --prep:#F2C45E; --prep-t:#453612;
     --misc:#BBAEF2; --misc-t:#2D2850;
   }
 }
 :root[data-theme="dark"]{
   --bg:#12161D; --surface:#1B212B; --ink:#E8ECF2; --muted:#98A4B5; --line:#2C3542; --focus:#86A6FF;
-  --groc:#62D3A0; --groc-t:#16352A;
   --buy:#8BA9FF;  --buy-t:#1B2A55;
   --daiso:#FF93A6; --daiso-t:#48202A;
-  --prep:#F2C45E; --prep-t:#453612;
   --misc:#BBAEF2; --misc-t:#2D2850;
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px);}
@@ -83,10 +77,8 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
 
 .board{margin-top:18px;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));align-items:start;}
 .col{--c:var(--misc);--t:var(--misc-t);background:var(--t);border-radius:18px;padding:14px 12px 12px;}
-.groc{--c:var(--groc);--t:var(--groc-t);}
 .buy{--c:var(--buy);--t:var(--buy-t);}
 .daiso{--c:var(--daiso);--t:var(--daiso-t);}
-.prep{--c:var(--prep);--t:var(--prep-t);}
 .misc{--c:var(--misc);--t:var(--misc-t);}
 .col header{padding:0 4px 10px;}
 .col h2{margin:0;display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;color:var(--c);}
@@ -107,10 +99,8 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
 .more:hover{color:var(--ink);background:var(--bg);}
 .acts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px;padding-top:2px;}
 .chip{--c:var(--misc);--t:var(--misc-t);background:var(--t);color:var(--c);border:1.5px solid var(--c);border-radius:999px;padding:6px 12px;font-size:.88rem;font-weight:500;}
-.chip.groc{--c:var(--groc);--t:var(--groc-t);}
 .chip.buy{--c:var(--buy);--t:var(--buy-t);}
 .chip.daiso{--c:var(--daiso);--t:var(--daiso-t);}
-.chip.prep{--c:var(--prep);--t:var(--prep-t);}
 .chip.misc{--c:var(--misc);--t:var(--misc-t);}
 .chip.del{--c:var(--muted);background:transparent;margin-left:auto;}
 .chip.plain{--c:var(--ink);background:transparent;}
@@ -148,20 +138,23 @@ h1{margin:0;font-size:1.6rem;font-weight:700;letter-spacing:-0.02em;}
 
 var KEY = 'memo-sorter-v1';
 var CATS = [
-  {id:'groc',  name:'장보기',      desc:'마트에서 살 식료품과 생필품'},
-  {id:'buy',   name:'살 것',       desc:'따로 사려는 물건'},
+  {id:'buy',   name:'살 것',       desc:'마트 장보기와 사려는 물건'},
   {id:'daiso', name:'다이소',      desc:'다이소에서 살 것'},
-  {id:'prep',  name:'준비',        desc:'챙기거나 미리 해둘 일'},
   {id:'misc',  name:'잡다한 메모', desc:'나머지 전부'}
 ];
-function catOf(id){ return CATS.find(function(c){return c.id===id;}) || CATS[4]; }
+/* 예전 칸(장보기·준비)에 있던 메모는 새 칸으로 옮겨요 */
+var OLD = {groc:'buy', prep:'misc'};
+function fixCat(id){
+  if(OLD[id]) return OLD[id];
+  return CATS.some(function(c){return c.id===id;}) ? id : 'misc';
+}
+function catOf(id){ return CATS.find(function(c){return c.id===id;}) || CATS[CATS.length-1]; }
 
 /* 단어 규칙: 위에서부터 먼저 맞는 칸으로 들어가요 */
 var FOOD = /우유|계란|달걀|두부|대파|양파|마늘|고기|삼겹|소고기|돼지|닭|생선|오징어|새우|라면|쌀|과일|사과|바나나|딸기|귤|포도|수박|김치|생수|콩나물|시금치|상추|식빵|빵|요거트|요구르트|치즈|커피|두유|반찬|마트|장보|채소|야채|감자|고구마|당근|버섯|오이|토마토|간장|참기름|소금|설탕|밀가루|햄|소시지|만두|과자|음료|맥주|주스|물티슈|세제|휴지/;
 var RULES = [
   ['daiso', /다이소|daiso|수납|정리함|후크|고리|집게|수세미|고무장갑|행주|밀폐용기|옷걸이|포스트잇|파우치/i],
-  ['prep',  /준비|챙기|챙겨|예약|신청|제출|서류|가져가|가져오|발표|시험|면접|출장|여행|접수|갱신|납부|송금/],
-  ['groc',  FOOD],
+  ['buy',   FOOD],
   ['buy',   /사야|사자|살\s?것|사기|구매|주문|구입|장만|교체|새로\s?사/]
 ];
 
@@ -179,8 +172,11 @@ function load(){
       var p = JSON.parse(raw);
       if(p && Array.isArray(p.memos)){
         state.memos = p.memos.filter(function(m){return m && typeof m.id==='string' && typeof m.text==='string' && m.cat;});
+        state.memos.forEach(function(m){ m.cat = fixCat(m.cat); });
         state.fixes = Array.isArray(p.fixes) ? p.fixes.filter(function(f){return f && typeof f.text==='string';}) : [];
+        state.fixes.forEach(function(f){ f.cat = fixCat(f.cat); });
         state.words = (p.words && typeof p.words==='object') ? p.words : {};
+        Object.keys(state.words).forEach(function(w){ state.words[w] = fixCat(state.words[w]); });
       }
     }
   }catch(e){ /* 저장소가 비었거나 못 읽어도 빈 화면으로 시작 */ }
@@ -207,11 +203,10 @@ function say(msg){
 }
 function short(t){ return t.length > 18 ? t.slice(0,18) + '…' : t; }
 
-/* 칸 이름을 따로 떨어뜨려 쓰면 그 칸으로 가고, 그 글자는 지워져요 (예: "여권 준비" → 준비칸에 "여권") */
+/* 칸 이름을 따로 떨어뜨려 쓰면 그 칸으로 가고, 그 글자는 지워져요 (예: "다이소 수납함" → 다이소칸에 "수납함") */
 var LABELS = [
   ['daiso', '다이소(?:에서|에|용)?'],
-  ['prep',  '준비'],
-  ['groc',  '장보기'],
+  ['buy',   '장보기'],
   ['buy',   '살\\s?것']
 ];
 function extractLabel(raw){
